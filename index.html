@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>J.A.R.V.I.S. Dashboard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@500;700&display=swap">
+<style>
+/* ===== Farb-Tokens ===== */
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg1:#030b17;--bg2:#08203a;--card:rgba(14,34,58,.55);--line:rgba(120,220,255,.22);--acc:#2fd8ff;--acc2:#f5b942;
+  --tx:#e6f4ff;--mut:#8fb0c8;--glow:0 0 24px rgba(47,216,255,.14);--ok:#43e3a0;--bad:#ff6b6b}
+:root[data-theme="light"]{--bg1:#eef5fb;--bg2:#d5e6f5;--card:rgba(255,255,255,.7);--line:rgba(10,90,140,.22);--acc:#007fa8;--acc2:#b36b00;
+  --tx:#0b2236;--mut:#47657c;--glow:0 4px 20px rgba(10,90,140,.1)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font:15px/1.5 Inter,system-ui,sans-serif;color:var(--tx);
+  background:radial-gradient(1200px 700px at 70% -10%,var(--bg2),var(--bg1) 70%) fixed;background-color:var(--bg1)}
+h1,h2,.orb-t,.big{font-family:Orbitron,Inter,sans-serif;letter-spacing:.06em}
+.wrap{max-width:1200px;margin:0 auto;padding:20px}
+/* ===== Kopfzeile ===== */
+header{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;margin-bottom:14px}
+h1{font-size:clamp(18px,3vw,26px);margin:0;font-weight:500}
+h1 b{color:var(--acc)}
+.sub{color:var(--mut);font-size:14px}
+.hr{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.clock{font-family:Orbitron,sans-serif;font-size:26px;color:var(--acc)}
+.status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:blink 2s infinite}
+@keyframes blink{50%{opacity:.35}}
+button{font:inherit;color:var(--tx);cursor:pointer}
+.btn{background:transparent;border:1px solid var(--line);border-radius:10px;padding:6px 12px;transition:.2s}
+.btn:hover{border-color:var(--acc);box-shadow:var(--glow);color:var(--acc)}
+.btn.pri{background:var(--acc);color:#02222d;border-color:var(--acc);font-weight:600}
+.btn.pri:hover{color:#02222d;filter:brightness(1.1)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--mut)}
+.chip.on{color:var(--acc);border-color:var(--acc)}
+/* ===== Raster & Karten ===== */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.card{grid-column:span 4;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:var(--glow);transition:.25s;min-width:0}
+.card:hover{border-color:var(--acc);transform:translateY(-2px)}
+.card.w6{grid-column:span 6}.card.w8{grid-column:span 8}
+.card.hide{display:none}
+h2{font-size:13px;margin:0 0 12px;color:var(--acc);font-weight:500;text-transform:uppercase}
+@media(max-width:960px){.card,.card.w6,.card.w8{grid-column:span 6}}
+@media(max-width:620px){.card,.card.w6,.card.w8{grid-column:span 12}.wrap{padding:14px}}
+input,textarea{width:100%;font:inherit;color:var(--tx);background:rgba(127,200,240,.08);border:1px solid var(--line);border-radius:10px;padding:9px 12px;outline:none}
+input:focus,textarea:focus{border-color:var(--acc);box-shadow:var(--glow)}
+textarea{min-height:130px;resize:vertical}
+ul{list-style:none;margin:0;padding:0}
+/* ===== Jarvis-Kern ===== */
+.core{text-align:center}
+.orb{position:relative;width:150px;height:150px;margin:4px auto 12px}
+.orb i{position:absolute;inset:0;border-radius:50%;border:2px solid transparent;border-top-color:var(--acc);animation:spin 6s linear infinite}
+.orb i:nth-child(2){inset:12px;border-top-color:var(--acc2);animation-duration:9s;animation-direction:reverse}
+.orb i:nth-child(3){inset:24px;border-color:var(--line);border-bottom-color:var(--acc);animation-duration:4s}
+.orb b{position:absolute;inset:46px;border-radius:50%;background:radial-gradient(circle,#fff 0,var(--acc) 40%,transparent 72%);animation:pulse 2.4s ease-in-out infinite}
+.orb.listen b{animation-duration:.8s;background:radial-gradient(circle,#fff 0,var(--acc2) 40%,transparent 72%)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{transform:scale(1.25);opacity:.7}}
+.reply{min-height:44px;font-size:14px;color:var(--mut);margin:0 0 10px}
+.ask{display:flex;gap:8px}
+.ask input{flex:1}
+/* ===== Aufgaben ===== */
+.add{display:flex;gap:8px;margin-bottom:10px}
+.add select{background:rgba(127,200,240,.08);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:0 6px;font:inherit}
+.task{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.task.done span{text-decoration:line-through;color:var(--mut)}
+.task span{flex:1;overflow-wrap:anywhere}
+.pr{width:8px;height:8px;border-radius:50%}
+.p1{background:var(--bad)}.p2{background:var(--acc2)}.p3{background:var(--ok)}
+.x{background:none;border:none;color:var(--mut);font-size:18px}.x:hover{color:var(--bad)}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--acc);padding:0}
+/* ===== Zeitplan ===== */
+.tl li{display:flex;gap:12px;padding:7px 0 7px 14px;border-left:2px solid var(--line);position:relative;font-size:14px}
+.tl li::before{content:"";position:absolute;left:-6px;top:13px;width:10px;height:10px;border-radius:50%;background:var(--bg1);border:2px solid var(--acc)}
+.tl li.now{border-left-color:var(--acc2)}.tl li.now::before{background:var(--acc2);border-color:var(--acc2);box-shadow:0 0 10px var(--acc2)}
+.tl li.past{opacity:.5}
+.tl time{font-family:Orbitron,sans-serif;font-size:12px;color:var(--acc);min-width:44px;padding-top:2px}
+/* ===== Gewohnheiten ===== */
+.habit{display:flex;align-items:center;gap:12px;padding:6px 0}
+.habit svg{flex:none}
+.habit .n{flex:1}.habit small{color:var(--mut);display:block}
+.ring-bg{stroke:var(--line)}.ring-fg{stroke:var(--acc);transition:stroke-dashoffset .5s}
+/* ===== Wetter, Timer, Statistik ===== */
+.wx{display:flex;align-items:center;gap:14px}
+.big{font-size:40px;color:var(--acc)}
+.fc{display:flex;justify-content:space-between;margin-top:12px;font-size:13px;color:var(--mut);text-align:center}
+.fc b{display:block;color:var(--tx);font-weight:500}
+.timer{text-align:center}
+.timer .big{font-size:48px;margin:6px 0}
+.timer .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.bar{height:6px;border-radius:9px;background:var(--line);margin:10px 0;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));width:0;transition:width 1s linear}
+.note-s{font-size:12px;color:var(--mut);margin-top:6px}
+.foot{text-align:center;color:var(--mut);font-size:12px;margin-top:20px}
+/* ===== Ansichten: Kern als Vollbild, Rest per Navigation unten ===== */
+body{padding-bottom:84px}
+.grid{display:block}
+.card,.card.w6,.card.w8{display:none;max-width:760px;margin:0 auto}
+.card.act{display:block;animation:fadein .35s}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}}
+.card.core.act{display:flex;flex-direction:column;justify-content:center;align-items:center;max-width:none;
+  min-height:calc(100dvh - 230px);background:transparent;border:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.card.core:hover{transform:none}
+.core .orb{width:min(62vw,300px);height:min(62vw,300px);margin-bottom:22px}
+.core .orb i:nth-child(2){inset:8%}.core .orb i:nth-child(3){inset:16%}.core .orb b{inset:31%}
+.core .orb-t{font-size:20px!important;margin-bottom:12px!important}
+.core .reply{max-width:560px;font-size:16px}
+.core .ask{width:100%;max-width:560px}
+.chips{position:fixed;left:0;right:0;bottom:0;z-index:20;margin:0;flex-wrap:nowrap;overflow-x:auto;gap:6px;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:var(--card);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line)}
+.chip{flex:none;font-size:13px;padding:8px 14px;cursor:pointer}
+@media(min-width:760px){.chips{justify-content:center}}
+/* ===== Gedächtnis: 3D-Mindmap ===== */
+.card.mem.act{max-width:960px}
+#mc{width:100%;height:min(62vh,460px);display:block;touch-action:none;cursor:grab;border-radius:12px;background:radial-gradient(circle at 50% 50%,rgba(47,216,255,.08),transparent 70%)}
+#mc:active{cursor:grabbing}
+.msel{min-height:36px;display:flex;align-items:center;gap:10px;margin:8px 0;color:var(--mut);font-size:14px}
+.msel b{color:var(--tx)}
+.madd{display:flex;gap:8px;flex-wrap:wrap}
+.madd input{flex:1;min-width:150px}
+.madd select{background:rgba(127,200,240,.08);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit}
+/* ===== Graz: Wetter & News ===== */
+.gz-top{display:flex;align-items:center;gap:16px}
+.gz-top .big{font-size:32px}
+.gz-days{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px;text-align:center;font-size:13px;color:var(--mut)}
+.gz-days div{border:1px solid var(--line);border-radius:12px;padding:8px}
+.gz-days b{display:block;color:var(--tx);font-weight:500}
+.stand{font-size:12px;color:var(--mut);margin-top:12px}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--acc2);color:var(--acc2)}
+.news li{padding:10px 0;border-bottom:1px solid var(--line)}
+.news a{color:var(--tx);text-decoration:none;font-weight:500}
+.news a:hover{color:var(--acc)}
+.news small{display:block;color:var(--mut)}
+.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.links a{text-decoration:none;color:var(--tx)}
+.card.graz.act{max-width:860px}
+.panel{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;background:rgba(127,200,240,.05)}
+.gz-top .big{font-size:30px}
+.gz-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0;text-align:center;font-size:12px;color:var(--mut)}
+.gz-stats div{border:1px solid var(--line);border-radius:10px;padding:6px 2px}
+.gz-stats b{display:block;color:var(--tx);font-size:14px;font-weight:500}
+.hours{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.hr1{flex:1 0 62px;display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--line);border-radius:12px;padding:8px 4px;font-size:12px;color:var(--mut)}
+.hr1 b{color:var(--tx);font-size:15px;font-weight:500}
+.hr1.now{border-color:var(--acc2);box-shadow:0 0 12px rgba(245,185,66,.25)}
+.news li{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.topic{flex:none;font-size:11px;padding:3px 10px;border-radius:99px;border:1px solid var(--acc);color:var(--acc);white-space:nowrap}
+.gz-days{grid-template-columns:repeat(3,1fr);margin:0 0 12px}
+.gz-days button{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--line);border-radius:12px;padding:8px 4px;background:transparent;font:inherit;font-size:13px;color:var(--mut);cursor:pointer;transition:.2s}
+.gz-days button b{color:var(--tx);font-weight:500}
+.gz-days button:hover{border-color:var(--acc)}
+.gz-days button.on{border-color:var(--acc);background:rgba(47,216,255,.1);box-shadow:var(--glow)}
+.hr1{cursor:pointer;background:transparent;font:inherit;font-size:12px;transition:.2s}
+.hr1:hover{border-color:var(--acc)}
+.hr1.sel{border-color:var(--acc);background:rgba(47,216,255,.1)}
+.gz-bar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;color:var(--mut)}
+.spin .ri{display:inline-block;animation:spin .7s}
+#gzmsg{margin:0 0 12px;text-align:right}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1><span id="greet">Guten Tag</span>, <b>Meister</b></h1><div class="sub" id="date"></div></div>
+  <div class="hr">
+    <div class="clock" id="clock">00:00:00</div>
+    <div class="status"><span class="dot"></span><span id="stat">J.A.R.V.I.S. online</span></div>
+    <button class="btn" id="theme" aria-label="Theme wechseln">☀ / ☾</button>
+  </div>
+</header>
+<div class="chips" id="chips" aria-label="Widgets ein- oder ausblenden"></div>
+
+<main class="grid">
+  <!-- 1 Jarvis-Kern -->
+  <section class="card core w6" data-w="core" data-n="Kern">
+    <div class="orb" id="orb"><i></i><i></i><i></i><b></b></div>
+    <div class="orb-t" style="color:var(--acc);font-size:14px;margin-bottom:6px">J.A.R.V.I.S.</div>
+    <p class="reply" id="reply">Zu Diensten. Probiere: „Aufgabe Mathe lernen“, „Notiz Vokabeln“ oder „Timer starten“.</p>
+    <form class="ask" id="askf" onsubmit="return false">
+      <input id="ask" placeholder="Frag Jarvis…  ( / )" autocomplete="off" aria-label="Frag Jarvis">
+      <button class="btn" id="mic" type="button" title="Spracheingabe" aria-label="Mikrofon">🎤</button>
+    </form>
+  </section>
+
+  <!-- 2 Tagesbriefing -->
+  <section class="card w6" data-w="brief" data-n="Briefing">
+    <h2>Tagesbriefing</h2>
+    <div id="brief"></div>
+  </section>
+
+  <!-- Graz: Wetter & News -->
+  <section class="card graz" data-w="graz" data-n="Graz">
+    <div class='gz-bar'><span id='gzag'></span><button class='btn' id='gzref'><span class='ri'>⟳</span> Aktualisieren</button></div>
+    <div class='note-s' id='gzmsg' hidden></div>
+    <div class='panel'>
+      <h2>🌤 Wetter · Graz</h2>
+      <div class='gz-days' id='gzd'></div>
+      <div class='gz-top'><div id='gzi'></div><div class='big' id='gzt'>–</div><div><div id='gzc'></div><div class='sub' id='gzs'></div></div></div>
+      <div class='gz-stats' id='gzx'></div>
+      <svg id='gzg' viewBox='0 0 320 90' width='100%' role='img' aria-label='Temperaturverlauf heute'></svg>
+      <div class='hours' id='gzh'></div>
+      <div class='sub' id='gzdet' style='margin-top:8px'></div>
+    </div>
+    <div class='panel'>
+      <h2>📰 News aus Graz &amp; Steiermark</h2>
+      <ul class='news' id='gzn'></ul>
+    </div>
+    <div class="stand" id="gzst"></div>
+    <div class="links" id="gzl"></div>
+    <div class="note-s">Wetter live von Open-Meteo.com (stündlich neu geladen). News: stündlich per GitHub Action aktualisiert (news.json).</div>
+  </section>
+
+  <!-- 3 Aufgaben -->
+  <section class="card w6" data-w="tasks" data-n="Aufgaben">
+    <h2>Aufgaben</h2>
+    <div class="add"><input id="tin" placeholder="Neue Aufgabe…" aria-label="Neue Aufgabe">
+      <select id="tpr" aria-label="Priorität"><option value="1">Hoch</option><option value="2" selected>Mittel</option><option value="3">Niedrig</option></select>
+      <button class="btn pri" id="tadd">+</button></div>
+    <ul id="tlist"></ul>
+  </section>
+
+  <!-- 4 Zeitplan -->
+  <section class="card" data-w="plan" data-n="Zeitplan">
+    <h2>Zeitplan heute</h2>
+    <ul class="tl" id="tl"></ul>
+  </section>
+
+  <!-- 5 Gewohnheiten -->
+  <section class="card" data-w="habits" data-n="Gewohnheiten">
+    <h2>Gewohnheiten</h2>
+    <div id="hl"></div>
+  </section>
+
+  <!-- 6 Wetter -->
+  <section class="card" data-w="wx" data-n="Wetter" hidden>
+    <h2>Wetter · Graz</h2>
+    <div class="wx"><div class="big">11°</div><div>Leicht bewölkt<div class="sub">Gefühlt 9° · Wind 8 km/h</div></div></div>
+    <div class="fc"><div>Sa<b>12°</b>☁</div><div>So<b>9°</b>🌧</div><div>Mo<b>7°</b>☁</div><div>Di<b>8°</b>☀</div><div>Mi<b>10°</b>☀</div></div>
+    <div class="note-s">Beispieldaten – keine Live-Anbindung.</div>
+  </section>
+
+  <!-- 7 Fokus-Timer -->
+  <section class="card timer" data-w="timer" data-n="Fokus-Timer">
+    <h2>Fokus-Timer</h2>
+    <div class="sub" id="tmode">Fokus · 25 Min.</div>
+    <div class="big" id="tdisp">25:00</div>
+    <div class="bar"><i id="tbar"></i></div>
+    <div class="row"><button class="btn pri" id="tgo">Start</button><button class="btn" id="trs">Reset</button><button class="btn" id="tsw">Pause 5</button></div>
+  </section>
+
+  <!-- 8 Notizen -->
+  <section class="card w6" data-w="notes" data-n="Notizen">
+    <h2>Schnellnotizen</h2>
+    <textarea id="nt" placeholder="Gedanken, Ideen, Merkzettel…" aria-label="Notizen"></textarea>
+    <div class="note-s" id="nsave">Wird automatisch gespeichert.</div>
+  </section>
+
+  <!-- 9 Statistik -->
+  <section class="card w6" data-w="stats" data-n="Statistik">
+    <h2>Erledigte Aufgaben · Woche</h2>
+    <svg id="chart" viewBox="0 0 320 150" width="100%" role="img" aria-label="Balkendiagramm erledigte Aufgaben pro Wochentag"></svg>
+  </section>
+  <!-- 10 Gedächtnis -->
+  <section class="card mem" data-w="mem" data-n="Gedächtnis">
+    <h2>Gedächtnis · 3D-Mindmap</h2>
+    <canvas id="mc" aria-label="3D-Mindmap des Gedächtnisses"></canvas>
+    <div class="msel" id="msel">Ziehen zum Drehen · Punkt antippen für Details</div>
+    <div class="madd"><select id="mbr" aria-label="Ast"></select><input id="min" placeholder="Neue Erinnerung…" aria-label="Neue Erinnerung"><button class="btn pri" id="madd">+</button></div>
+    <div class="note-s">Wird im Browser gespeichert. Auch per Chat: „Merke Wettkampf im Mai“.</div>
+  </section>
+</main>
+<div class="foot" id="foot">J.A.R.V.I.S. · Persönliches Dashboard</div>
+</div>
+
+<script>
+/* ===== Speicher: localStorage, sonst Arbeitsspeicher ===== */
+const mem = {}; let storageOK = true;
+const load = (k, d) => { try { const v = localStorage.getItem('jv_' + k); return v ? JSON.parse(v) : d; } catch (e) { storageOK = false; return k in mem ? mem[k] : d; } };
+const save = (k, v) => { mem[k] = v; try { localStorage.setItem('jv_' + k, JSON.stringify(v)); } catch (e) { storageOK = false; } };
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const todayIdx = () => (new Date().getDay() + 6) % 7; // Mo=0 … So=6
+const DAYS = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+
+/* ===== Kopfzeile: Begrüßung, Datum, Uhr ===== */
+function tick() {
+  const d = new Date(), h = d.getHours();
+  $('greet').textContent = h < 5 ? 'Gute Nacht' : h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
+  $('clock').textContent = pad(h) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  $('date').textContent = d.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+setInterval(tick, 1000); tick();
+
+/* ===== Theme ===== */
+const root = document.documentElement;
+root.dataset.theme = load('theme', 'dark');
+$('theme').onclick = () => { root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark'; save('theme', root.dataset.theme); };
+
+/* ===== Ansichten wechseln: Navigation unten, Start immer im Kern ===== */
+const cards = [...document.querySelectorAll('.card:not([hidden])')];
+function show(w) {
+  cards.forEach(c => c.classList.toggle('act', c.dataset.w === w));
+  document.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', b.dataset.w === w));
+  window.scrollTo(0, 0);
+}
+cards.forEach(c => {
+  const b = document.createElement('button'); b.className = 'chip'; b.dataset.w = c.dataset.w; b.textContent = c.dataset.n;
+  b.onclick = () => show(c.dataset.w); $('chips').appendChild(b);
+});
+show('core');
+
+/* ===== Aufgaben ===== */
+// Beispiel-Aufgaben aus früheren Versionen werden auch aus dem Speicher entfernt
+const SEED = ['Mathe-Hausübung: Funktionen', 'Vokabeln Englisch wiederholen', 'Referat Geschichte gliedern', 'Sportsachen einpacken'];
+let tasks = load('tasks', []).filter(x => !SEED.includes(x.t));
+let stats = load('stats2', [0, 0, 0, 0, 0, 0, 0]);
+function addTask(t, p = 2) { if (!t.trim()) return; tasks.unshift({ t: t.trim(), p: +p, d: false }); saveTasks(); }
+function saveTasks() { save('tasks', tasks); renderTasks(); renderBrief(); }
+function renderTasks() {
+  const ul = $('tlist'); ul.innerHTML = '';
+  [...tasks].map((x, i) => ({ x, i })).sort((a, b) => a.x.d - b.x.d || a.x.p - b.x.p).forEach(({ x, i }) => {
+    const li = document.createElement('li'); li.className = 'task' + (x.d ? ' done' : '');
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = x.d; cb.setAttribute('aria-label', 'Erledigt');
+    cb.onchange = () => { x.d = cb.checked; stats[todayIdx()] = Math.max(0, stats[todayIdx()] + (x.d ? 1 : -1)); save('stats2', stats); saveTasks(); renderChart(); };
+    const pr = document.createElement('i'); pr.className = 'pr p' + x.p;
+    const sp = document.createElement('span'); sp.textContent = x.t;
+    const del = document.createElement('button'); del.className = 'x'; del.textContent = '×'; del.setAttribute('aria-label', 'Löschen');
+    del.onclick = () => { tasks.splice(i, 1); saveTasks(); };
+    li.append(cb, pr, sp, del); ul.appendChild(li);
+  });
+}
+$('tadd').onclick = () => { addTask($('tin').value, $('tpr').value); $('tin').value = ''; };
+$('tin').onkeydown = e => { if (e.key === 'Enter') $('tadd').click(); };
+
+/* ===== Zeitplan (Beispieltermine) ===== */
+const events = []; // noch keine eigenen Termine
+function renderTL() {
+  const now = new Date(), m = now.getHours() * 60 + now.getMinutes();
+  const mins = e => +e[0].slice(0, 2) * 60 + +e[0].slice(3);
+  let cur = -1; events.forEach((e, i) => { if (mins(e) <= m) cur = i; });
+  if (!events.length) { $('tl').innerHTML = '<li style="border:none;color:var(--mut)">Noch keine Termine eingetragen.</li>'; return; }
+  $('tl').innerHTML = events.map((e, i) => `<li class="${i < cur ? 'past' : i === cur ? 'now' : ''}"><time>${e[0]}</time><span>${e[1]}</span></li>`).join('');
+}
+renderTL(); setInterval(renderTL, 60000);
+
+/* ===== Tagesbriefing ===== */
+function renderBrief() {
+  const open = tasks.filter(t => !t.d), high = open.filter(t => t.p === 1);
+  const next = events.find(e => +e[0].slice(0, 2) * 60 + +e[0].slice(3) > new Date().getHours() * 60 + new Date().getMinutes());
+  $('brief').innerHTML =
+    `<p style="margin:0 0 8px">Heute stehen <b style="color:var(--acc)">${events.length} Termine</b> und <b style="color:var(--acc)">${open.length} offene Aufgaben</b> an.</p>` +
+    `<ul><li>🔥 Priorität: ${high.length ? high.map(t => t.t).join(', ') : 'keine dringenden Aufgaben'}</li>` +
+    `<li>⏰ Als Nächstes: ${next ? next[0] + ' Uhr, ' + next[1] : 'keine Termine eingetragen'}</li></ul>`;
+}
+
+/* ===== Gewohnheiten ===== */
+let habits = load('habits', []).filter(h => !['Lesen (20 Min.)', 'Wasser trinken (2 l)', 'Bewegung'].includes(h.n));
+function streak(h) { let s = 0, i = todayIdx(); if (!h.w[i]) i--; while (i >= 0 && h.w[i]) { s++; i--; } return s + (i < 0 ? h.base : 0); }
+function renderHabits() {
+  $('hl').innerHTML = ''; const C = 2 * Math.PI * 20;
+  habits.forEach(h => {
+    const n = h.w.reduce((a, b) => a + b, 0), div = document.createElement('div'); div.className = 'habit';
+    div.innerHTML = `<svg width="52" height="52" viewBox="0 0 52 52"><circle class="ring-bg" cx="26" cy="26" r="20" fill="none" stroke-width="5"/><circle class="ring-fg" cx="26" cy="26" r="20" fill="none" stroke-width="5" stroke-linecap="round" transform="rotate(-90 26 26)" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - n / 7)}"/><text x="26" y="30" text-anchor="middle" font-size="12" fill="currentColor">${n}/7</text></svg>
+      <div class="n">${h.n}<small>🔥 Serie: ${streak(h)} Tage</small></div>`;
+    const b = document.createElement('button'); b.className = 'btn' + (h.w[todayIdx()] ? ' pri' : ''); b.textContent = h.w[todayIdx()] ? '✓ Heute' : 'Heute';
+    b.onclick = () => { h.w[todayIdx()] ^= 1; save('habits', habits); renderHabits(); };
+    div.appendChild(b); $('hl').appendChild(div);
+  });
+  // Eingabe für eigene Gewohnheiten
+  const f = document.createElement('div'); f.className = 'add';
+  f.innerHTML = '<input placeholder="Neue Gewohnheit…" aria-label="Neue Gewohnheit"><button class="btn pri">+</button>';
+  const inp = f.querySelector('input');
+  const go = () => { if (inp.value.trim()) { habits.push({ n: inp.value.trim(), base: 0, w: [0,0,0,0,0,0,0] }); save('habits', habits); renderHabits(); } };
+  f.querySelector('button').onclick = go; inp.onkeydown = e => { if (e.key === 'Enter') go(); };
+  $('hl').appendChild(f);
+}
+
+/* ===== Fokus-Timer (Pomodoro) ===== */
+let focus = true, total = 1500, left = total, iv = null;
+function showTimer() {
+  $('tdisp').textContent = pad(Math.floor(left / 60)) + ':' + pad(left % 60);
+  $('tbar').style.width = (100 * (total - left) / total) + '%';
+  $('tmode').textContent = focus ? 'Fokus · 25 Min.' : 'Pause · 5 Min.';
+  $('tgo').textContent = iv ? 'Pause' : 'Start';
+  $('tsw').textContent = focus ? 'Pause 5' : 'Fokus 25';
+}
+function stopT() { clearInterval(iv); iv = null; }
+function setMode(f) { stopT(); focus = f; total = left = f ? 1500 : 300; showTimer(); }
+$('tgo').onclick = () => {
+  if (iv) { stopT(); } else iv = setInterval(() => {
+    if (--left <= 0) { stopT(); say(focus ? 'Fokusblock geschafft, Meister. Zeit für eine Pause.' : 'Pause vorbei – weiter geht’s.'); setMode(!focus); return; }
+    showTimer();
+  }, 1000);
+  showTimer();
+};
+$('trs').onclick = () => setMode(focus);
+$('tsw').onclick = () => setMode(!focus);
+showTimer();
+
+/* ===== Notizen ===== */
+$('nt').value = load('note', '');
+$('nt').oninput = () => { save('note', $('nt').value); $('nsave').textContent = 'Gespeichert um ' + new Date().toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }); };
+
+/* ===== Statistik (SVG-Balken) ===== */
+function renderChart() {
+  const max = Math.max(5, ...stats), ti = todayIdx(); let s = '';
+  stats.forEach((v, i) => {
+    const h = 100 * v / max, x = 12 + i * 44;
+    s += `<rect x="${x}" y="${115 - h}" width="28" height="${h}" rx="6" fill="${i === ti ? 'var(--acc2)' : 'var(--acc)'}" opacity="${i > ti ? .3 : .9}"/>` +
+         `<text x="${x + 14}" y="${108 - h}" text-anchor="middle" font-size="11" fill="var(--tx)">${v}</text>` +
+         `<text x="${x + 14}" y="136" text-anchor="middle" font-size="11" fill="var(--mut)">${DAYS[i]}</text>`;
+  });
+  $('chart').innerHTML = s;
+}
+
+/* ===== Jarvis: einfache Befehle & Spracheingabe ===== */
+const orb = $('orb');
+function say(t) { $('reply').textContent = t; $('stat').textContent = 'J.A.R.V.I.S. online'; }
+function handle(q) {
+  const l = q.toLowerCase().trim(); if (!l) return;
+  let m;
+  if ((m = l.match(/^(aufgabe|todo)\s+(.+)/))) { addTask(q.slice(q.toLowerCase().indexOf(m[2]))); return say('Aufgabe hinzugefügt: ' + m[2]); }
+  if ((m = l.match(/^notiz\s+(.+)/))) { $('nt').value += '\n' + q.slice(q.toLowerCase().indexOf(m[1])); $('nt').oninput(); return say('Notiz gespeichert.'); }
+  if (/timer|fokus/.test(l)) { if (!iv) $('tgo').click(); return say('Fokus-Timer läuft. Viel Erfolg, Meister.'); }
+  if ((m = l.match(/^merk(?:e)?(?: dir)?\s+(.+)/))) { const t = q.slice(q.toLowerCase().indexOf(m[1])); (mind.Notizen = mind.Notizen || []).push(t); save('mind', mind); build(); fillSel(); return say('Im Gedächtnis abgelegt: ' + t); }
+  if (/weißt|gedächtnis/.test(l)) return say('Ich kenne ' + Object.values(mind).flat().length + ' Einträge in ' + Object.keys(mind).length + ' Ästen. Schau in die Gedächtnis-Ansicht, Meister.');
+  if (/uhr|zeit/.test(l)) return say('Es ist ' + new Date().toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ' Uhr.');
+  if (/wetter/.test(l)) return say('Graz heute: ' + GRAZ.wx[0].t + ', ' + GRAZ.wx[0].c.toLowerCase() + ' (Stand: ' + GRAZ.stand + ').');
+  if (/aufgaben|briefing/.test(l)) { const o = tasks.filter(t => !t.d).length; return say('Du hast ' + o + ' offene Aufgaben.'); }
+  say('Das kann ich noch nicht, Meister. Ich verstehe: Aufgabe …, Notiz …, Timer, Uhrzeit, Wetter.');
+}
+$('ask').onkeydown = e => { if (e.key === 'Enter') { handle($('ask').value); $('ask').value = ''; } };
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  const r = new SR(); r.lang = 'de-AT';
+  r.onresult = e => { const t = e.results[0][0].transcript; $('ask').value = t; handle(t); };
+  r.onend = () => { orb.classList.remove('listen'); };
+  r.onerror = () => { orb.classList.remove('listen'); say('Spracheingabe nicht möglich (Mikrofon-Zugriff?).'); };
+  $('mic').onclick = () => { try { r.start(); orb.classList.add('listen'); $('stat').textContent = 'Hört zu…'; } catch (e) {} };
+} else { $('mic').disabled = true; $('mic').title = 'Spracheingabe wird von diesem Browser nicht unterstützt'; }
+
+/* ===== Tastenkürzel: "/" fokussiert Jarvis ===== */
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); show('core'); $('ask').focus(); }
+});
+
+/* ===== Gedächtnis: 3D-Mindmap (Canvas, eigene 3D-Projektion ohne Bibliothek) ===== */
+const DEF = {
+  Person: ['Anrede: Meister', 'Ort: Graz', 'Schüler'],
+  Interessen: ['Ninja-Sport'],
+  Training: ['Gym Mo + Mi', 'Ninja-Training Do', 'Wochenende wechselnd'],
+  Alltag: ['Mo–Fr: Aufstehen', 'Schule', 'Nachhause & Essen'],
+  Ziele: ['Erfolgreich werden', 'Geld verdienen', 'Schule schaffen', 'Weiterentwickeln', 'Leben managen'],
+  Stil: ['Kurz & direkt', 'Locker', 'Stichpunkte', 'Tabellen', 'Statistiken', 'Keine langen Antworten'],
+  Aufgaben: ['Tagesplanung', 'Erinnerungen', 'Recherche', 'Schreiben', 'Entscheidungen', 'Mitdenken'],
+  Regeln: ['Ehrlich bei schlechtem Plan', 'Nachfragen statt raten', 'Keine Fakten erfinden', 'Daten vertraulich', 'Bestätigung bei Folgen'],
+  Ton: ['Gelassen', 'Souverän', 'Leicht ironisch']
+};
+let mind = load('mind', DEF);
+// Einmalige Zusammenführung: neue Standard-Einträge ergänzen, eigene Einträge bleiben erhalten
+if (load('mindv', 0) < 2) {
+  Object.keys(DEF).forEach(k => { mind[k] = [...new Set([...(mind[k] || []), ...DEF[k]])]; });
+  save('mind', mind); save('mindv', 2);
+}
+let nodes = [], edges = [], sel = null, ax = -0.3, ay = 0, drag = null;
+const cv = $('mc'), g = cv.getContext('2d');
+// Punkte gleichmäßig auf einer Kugel verteilen (Fibonacci-Kugel)
+function fib(i, n) { const y = n < 2 ? 0 : 1 - 2 * i / (n - 1), r = Math.sqrt(Math.max(0, 1 - y * y)), t = i * 2.39996; return [Math.cos(t) * r, y, Math.sin(t) * r]; }
+function build() {
+  nodes = [{ l: 'Meister', x: 0, y: 0, z: 0, k: 0 }]; edges = [];
+  const keys = Object.keys(mind);
+  keys.forEach((k, i) => {
+    const d = fib(i, keys.length), b = { l: k, x: d[0] * 120, y: d[1] * 120, z: d[2] * 120, k: 1, br: k };
+    nodes.push(b); edges.push([nodes[0], b]);
+    mind[k].forEach((it, j, a) => {
+      const e = fib(j, Math.max(a.length, 2));
+      const n = { l: it, x: b.x + e[0] * 55 + d[0] * 30, y: b.y + e[1] * 55 + d[1] * 30, z: b.z + e[2] * 55 + d[2] * 30, k: 2, br: k, idx: j };
+      nodes.push(n); edges.push([b, n]);
+    });
+  });
+}
+function fillSel() {
+  $('mbr').innerHTML = Object.keys(mind).map(k => `<option value="${k.replace(/"/g, '&quot;')}">${k.replace(/</g, '&lt;')}</option>`).join('') + '<option value="__new">+ Neuer Ast</option>';
+}
+function showSel() {
+  const el = $('msel'); el.textContent = '';
+  if (!sel) { el.textContent = 'Ziehen zum Drehen · Punkt antippen für Details'; return; }
+  const t = document.createElement('span'); t.innerHTML = (sel.k === 0 ? 'Zentrum: ' : sel.k === 1 ? 'Ast: ' : 'Eintrag in ' + '<i></i>: '); t.querySelector('i') && (t.querySelector('i').textContent = sel.br);
+  const b = document.createElement('b'); b.textContent = sel.l; el.append(t, b);
+  if (sel.k > 0) { const d = document.createElement('button'); d.className = 'btn'; d.textContent = 'Löschen';
+    d.onclick = () => { if (sel.k === 1) delete mind[sel.br]; else mind[sel.br].splice(sel.idx, 1); sel = null; save('mind', mind); build(); fillSel(); showSel(); };
+    el.appendChild(d); }
+}
+$('madd').onclick = () => {
+  const v = $('min').value.trim(); if (!v) return;
+  if ($('mbr').value === '__new') { if (!mind[v]) mind[v] = []; } else mind[$('mbr').value].push(v);
+  save('mind', mind); build(); fillSel(); $('min').value = '';
+};
+$('min').onkeydown = e => { if (e.key === 'Enter') $('madd').click(); };
+// 3D → 2D: Drehung um Y- und X-Achse, dann Perspektive
+function proj(n, W, H) {
+  const c1 = Math.cos(ay), s1 = Math.sin(ay), c2 = Math.cos(ax), s2 = Math.sin(ax);
+  const x = n.x * c1 + n.z * s1, z1 = -n.x * s1 + n.z * c1, y = n.y * c2 - z1 * s2, z = n.y * s2 + z1 * c2;
+  const s = 420 / (420 + z), f = Math.min(W, H) / 330;
+  n.px = W / 2 + x * s * f; n.py = H / 2 + y * s * f; n.sc = s; n.f = f; n.dz = z;
+  n.df = Math.max(.25, Math.min(1, (s - .7) / .6));
+  n.r = [15, 8.5, 5][n.k] * s * (.5 + f * .5);
+}
+function draw() {
+  requestAnimationFrame(draw);
+  if (!cv.closest('.card').classList.contains('act')) return; // nur zeichnen, wenn sichtbar
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  if (!drag) ay += 0.004;
+  nodes.forEach(n => proj(n, W, H));
+  const cs = getComputedStyle(root), A = cs.getPropertyValue('--acc').trim(), B = cs.getPropertyValue('--acc2').trim(), T = cs.getPropertyValue('--tx').trim();
+  g.strokeStyle = A; g.lineWidth = 1;
+  edges.forEach(([a, b]) => { g.globalAlpha = .1 + .3 * (a.df + b.df) / 2; g.beginPath(); g.moveTo(a.px, a.py); g.lineTo(b.px, b.py); g.stroke(); });
+  [...nodes].sort((a, b) => b.dz - a.dz).forEach(n => {
+    const col = n.k === 0 ? B : A;
+    g.globalAlpha = n.df; g.fillStyle = col; g.shadowColor = col; g.shadowBlur = n.k === 2 ? 6 : 16;
+    g.beginPath(); g.arc(n.px, n.py, n.r, 0, 7); g.fill(); g.shadowBlur = 0;
+    if (n === sel) { g.strokeStyle = T; g.lineWidth = 2; g.beginPath(); g.arc(n.px, n.py, n.r + 5, 0, 7); g.stroke(); g.strokeStyle = A; g.lineWidth = 1; }
+    if (n.k < 2 || n.df > .55 || n === sel) {
+      g.fillStyle = T; g.font = (n.k === 0 ? 600 : 500) + ' ' + Math.max(10, [14, 12, 11][n.k] * n.sc) + 'px Inter, sans-serif'; g.textAlign = 'center';
+      g.fillText(n.l, n.px, n.py + n.r + 14);
+    }
+  });
+  g.globalAlpha = 1;
+}
+// Ziehen = drehen, Antippen = Punkt auswählen
+cv.onpointerdown = e => { drag = { x: e.clientX, y: e.clientY, moved: false }; cv.setPointerCapture(e.pointerId); };
+cv.onpointermove = e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+  ay += dx * 0.008; ax = Math.max(-1.4, Math.min(1.4, ax - dy * 0.008)); drag.x = e.clientX; drag.y = e.clientY;
+};
+cv.onpointerup = e => {
+  if (drag && !drag.moved) {
+    const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    let best = null, bd = 1e9;
+    nodes.forEach(n => { const d = Math.hypot(n.px - mx, n.py - my); if (d < n.r + 14 && d < bd) { bd = d; best = n; } });
+    sel = best; showSel();
+  }
+  drag = null;
+};
+build(); fillSel(); draw();
+
+/* ===== Graz: Wetter & News (Momentaufnahme, nicht live) ===== */
+/* Wetter-Symbole als Inline-SVG */
+function ico(t, s = 40) {
+  const sun = `<circle cx='24' cy='24' r='8' fill='var(--acc2)'/>` + [0,45,90,135,180,225,270,315].map(a => `<line x1='24' y1='6' x2='24' y2='11' stroke='var(--acc2)' stroke-width='2.5' stroke-linecap='round' transform='rotate(${a} 24 24)'/>`).join('');
+  const moon = `<path d='M28 7a17 17 0 1 0 13 27A14 14 0 0 1 28 7z' fill='var(--acc2)'/>`;
+  const cl = `<path d='M14 38a8 8 0 0 1-1-16 11 11 0 0 1 21-2 8 8 0 0 1 2 18z' fill='var(--mut)' stroke='var(--tx)' stroke-opacity='.4'/>`;
+  const g = (x, y, k, c) => `<g transform='translate(${x} ${y}) scale(${k})'>${c}</g>`;
+  const body = { rain: g(0, -6, .85, cl) + `<path d='M16 36l-2 6M24 36l-2 6M32 36l-2 6' stroke='var(--acc)' stroke-width='3' stroke-linecap='round'/>`,
+    snow: g(0, -6, .85, cl) + `<circle cx='15' cy='38' r='2' fill='var(--tx)'/><circle cx='24' cy='42' r='2' fill='var(--tx)'/><circle cx='33' cy='38' r='2' fill='var(--tx)'/>`,
+    sun, moon, cloud: cl, part: g(-6, -8, .8, sun) + g(4, 4, .85, cl), moonpart: g(-6, -8, .8, moon) + g(4, 4, .85, cl),
+    fog: g(0, -6, .85, cl) + `<path d='M9 36h30M13 42h24' stroke='var(--mut)' stroke-width='3' stroke-linecap='round'/>` }[t] || cl;
+  return `<svg viewBox='0 0 48 48' width='${s}' height='${s}' aria-hidden='true'>${body}</svg>`;
+}
+const GRAZ = {
+  stand: 'Fr, 20.11.2026, ca. 19:30 Uhr', ts: '2026-11-20T19:30:00+01:00',
+  wx: [
+    { d: 'Heute', t: '2° – 11°', i: 'cloud', c: 'Stark bewölkt, trocken', s: 'Wind schwach, 2–3 km/h' },
+    { d: 'Samstag', t: '1° – 10°', mn: 1, mx: 10, i: 'part', c: 'Leicht bewölkt' },
+    { d: 'Sonntag', t: '1° – 6°', mn: 1, mx: 6, i: 'cloud', c: 'Bedeckt' }
+  ],
+  date: '2026-11-20',
+  // Stunden: [Uhrzeit, Temperatur °C, Symbol, Regenrisiko %, Wind km/h]
+  hours: [['00', 2, 'fog', 0, 3], ['03', 2, 'fog', 0, 2], ['06', 2, 'cloud', 0, 1], ['09', 3, 'cloud', 5, 0], ['12', 9, 'cloud', 4, 3], ['15', 11, 'cloud', 0, 2], ['18', 7, 'moon', 5, 2], ['21', 4, 'moonpart', 2, 2]],
+  topics: ['Polizei', 'Politik', 'Chronik', 'Politik', 'Verkehr', 'Freizeit'],
+  // [Schlagzeile (eigene Zusammenfassung), Quelle, Link]
+  news: [
+    ['Grazer Polizei feiert 240-jähriges Bestehen mit Festakt', '5min.at', 'https://www.5min.at/graz/5202611201900/grazer-polizei-feiert-240-jahre-so-gross-ist-sie-heute/'],
+    ['Gemeinderat: Stadt senkt KlimaTicket-Förderung ab 1. Jänner 2027', 'Grazjournal', 'https://grazjournal.at/news/gemeinderat-graz-beschluesse-19-november-2026/'],
+    ['Einbruch beim Juwelier am Hauptplatz: Polizei zeigt Fotos der Verdächtigen', '5min.at', 'https://www.5min.at/'],
+    ['Landesregierung beschließt Personalbericht 2026', 'Radio Graz', 'https://www.radiograz.at/landesregierung-praesentiert-personalbericht-2026-fuer-steiermark-26241/'],
+    ['Steiermark zeichnet Gewinner der Europäischen Mobilitätswoche aus', 'Radio Graz', 'https://www.radiograz.at/steiermark-ehrt-gewinner-der-europaeischen-mobilitaetswoche-2026-26259/'],
+    ['Advent in Graz: Die Weihnachtsmarkt-Saison startet', 'Inside Graz', 'https://www.inside-graz.at/']
+  ],
+  links: [['Wetter Graz', 'https://wetter-austria.at/de/orte/graz.html'], ['Inside Graz', 'https://www.inside-graz.at/'], ['5 Minuten', 'https://www.5min.at/'], ['Land Steiermark', 'https://www.news.steiermark.at/']]
+};
+let gzDay = 0, gzHour = null; // gewählter Tag / gewählte Stunde
+function renderGraz() {
+  const w = GRAZ.wx[gzDay];
+  $('gzt').textContent = w.t; $('gzc').textContent = w.c; $('gzs').textContent = w.s || '';
+  $('gzd').innerHTML = '';
+  GRAZ.wx.forEach((x, i) => { const d = document.createElement('button'); d.className = i === gzDay ? 'on' : ''; const n = document.createElement('span'); n.textContent = x.d; const b = document.createElement('b'); b.textContent = x.t; d.append(n); d.insertAdjacentHTML('beforeend', ico(x.i, 34)); d.append(b); d.onclick = () => { gzDay = i; gzHour = null; renderGraz(); }; $('gzd').appendChild(d); });
+  $('gzi').innerHTML = ico(w.i, 64);
+  const live = !!(GRAZ.hrs && GRAZ.hrs[gzDay]), H = live ? GRAZ.hrs[gzDay] : GRAZ.hours, ts = H.map(x => x[1]), mn = Math.min(...ts), mx = Math.max(...ts), nd = new Date();
+  const isToday = gzDay === 0 && nd.getFullYear() + '-' + pad(nd.getMonth() + 1) + '-' + pad(nd.getDate()) === GRAZ.date, cur = Math.min(7, Math.floor(nd.getHours() / 3));
+  const day0 = live || gzDay === 0;
+  $('gzx').innerHTML = (!day0 ? [['Min', w.mn + '°'], ['Max', w.mx + '°'], ['Regen', '–'], ['Wind', '–']] : [['Min', mn + '°'], ['Max', mx + '°'], ['Regen', 'bis ' + Math.max(...H.map(x => x[3])) + ' %'], ['Wind', 'bis ' + Math.max(...H.map(x => x[4])) + ' km/h']]).map(x => `<div>${x[0]}<b>${x[1]}</b></div>`).join('');
+  const sh = gzHour ?? (isToday ? cur : 0);
+  $('gzh').innerHTML = day0 ? H.map((x, i) => `<button class='hr1${isToday && i === cur ? ' now' : ''}${i === sh ? ' sel' : ''}' aria-label='${x[0]} Uhr'><span>${x[0]}:00</span>${ico(x[2], 30)}<b>${x[1]}°</b><span>${x[3]} %</span></button>`).join('') : `<div class='note-s'>Für diesen Tag habe ich nur die Tageswerte. Stundenwerte gibt es, wenn du im Chat „Aktualisiere Graz“ schreibst.</div>`;
+  $('gzh').querySelectorAll('.hr1').forEach((e, i) => { e.onclick = () => { gzHour = i; renderGraz(); }; });
+  const X = i => 22 + i * 39.5, Y = t => 70 - (t - mn) / ((mx - mn) || 1) * 40, pts = H.map((x, i) => [X(i), Y(x[1])]), line = pts.map(q => q.join(',')).join(' L');
+  $('gzg').innerHTML = !day0 ? '' : `<path d='M${line} L${X(7)},84 L${X(0)},84z' fill='var(--acc)' opacity='.12'/><path d='M${line}' fill='none' stroke='var(--acc)' stroke-width='2.5'/>` + pts.map((q, i) => `<circle cx='${q[0]}' cy='${q[1]}' r='3.5' fill='var(--acc)'/><text x='${q[0]}' y='${q[1] - 8}' text-anchor='middle' font-size='11' fill='var(--tx)'>${H[i][1]}°</text>`).join('');
+  const D = { rain: 'Regen', snow: 'Schnee', fog: 'Nebel', cloud: 'Bedeckt', moon: 'Klar', moonpart: 'Teils bewölkt', part: 'Wolkig, etwas Sonne', sun: 'Sonnig' };
+  $('gzdet').textContent = day0 ? H[sh][0] + ':00 Uhr · ' + H[sh][1] + '° · ' + D[H[sh][2]] + ' · Regenrisiko ' + H[sh][3] + ' % · Wind ' + H[sh][4] + ' km/h' : w.d + ': ' + w.c;
+  $('gzn').innerHTML = '';
+  GRAZ.news.forEach((n, i) => {
+    const li = document.createElement('li'), l = document.createElement('div'), a = document.createElement('a'), s = document.createElement('small'), t = document.createElement('span');
+    a.textContent = n[0]; a.href = n[2]; a.target = '_blank'; a.rel = 'noopener noreferrer'; s.textContent = n[1]; t.className = 'topic'; t.textContent = GRAZ.topics[i];
+    l.append(a, s); li.append(l, t); $('gzn').appendChild(li);
+  });
+  const h = Math.floor((Date.now() - new Date(GRAZ.ts)) / 36e5);
+  const age = h < 1 ? 'aktuell' : h < 24 ? 'vor ' + h + ' Std. · nicht live' : 'vor ' + Math.floor(h / 24) + ' Tg. · nicht live';
+  $('gzag').textContent = 'Stand: ' + age; $('gzst').innerHTML = 'Stand: ' + GRAZ.stand + ' · <span class="tag">' + age + '</span>';
+  if (!$('gzl').children.length) GRAZ.links.forEach(l => { const a = document.createElement('a'); a.className = 'btn'; a.textContent = l[0] + ' ↗'; a.href = l[1]; a.target = '_blank'; a.rel = 'noopener noreferrer'; $('gzl').appendChild(a); });
+}
+// ===== Live-Daten: Wetter (Open-Meteo, ohne API-Schlüssel) =====
+function wcode(c, night) { // WMO-Wettercode -> [Symbol, Text]
+  if (c === 0) return [night ? 'moon' : 'sun', night ? 'Klar' : 'Sonnig'];
+  if (c <= 2) return [night ? 'moonpart' : 'part', c === 1 ? 'Überwiegend klar' : 'Teils bewölkt'];
+  if (c === 3) return ['cloud', 'Bedeckt'];
+  if (c === 45 || c === 48) return ['fog', 'Nebel'];
+  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return ['snow', 'Schnee'];
+  if (c >= 95) return ['rain', 'Gewitter'];
+  return ['rain', 'Regen'];
+}
+async function loadWeather() {
+  try {
+    const u = 'https://api.open-meteo.com/v1/forecast?latitude=47.07&longitude=15.44&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Europe%2FVienna&forecast_days=3';
+    const r = await fetch(u); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const hrs = [0, 1, 2].map(d => [0, 3, 6, 9, 12, 15, 18, 21].map(h => {
+      const k = d * 24 + h, c = wcode(j.hourly.weather_code[k], h < 7 || h >= 17);
+      return [pad(h), Math.round(j.hourly.temperature_2m[k]), c[0], j.hourly.precipitation_probability[k] || 0, Math.round(j.hourly.wind_speed_10m[k])];
+    }));
+    GRAZ.hrs = hrs; GRAZ.date = j.daily.time[0];
+    GRAZ.wx = j.daily.time.map((t, d) => {
+      const mn = Math.round(j.daily.temperature_2m_min[d]), mx = Math.round(j.daily.temperature_2m_max[d]), c = wcode(j.daily.weather_code[d], false);
+      return { d: d === 0 ? 'Heute' : d === 1 ? 'Morgen' : new Date(t + 'T12:00').toLocaleDateString('de-AT', { weekday: 'long' }),
+        t: mn + '° – ' + mx + '°', mn, mx, i: c[0], c: c[1], s: 'Wind bis ' + Math.max(...hrs[d].map(x => x[4])) + ' km/h' };
+    });
+    const now = new Date(); GRAZ.ts = now.toISOString();
+    GRAZ.stand = 'live, ' + now.toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }) + ' Uhr';
+    renderGraz();
+  } catch (e) { /* offline oder blockiert: statische Beispieldaten bleiben */ }
+}
+// ===== News: news.json wird stündlich von der GitHub Action geschrieben =====
+async function loadNews() {
+  try {
+    const r = await fetch('news.json?' + Date.now()); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (Array.isArray(j.items) && j.items.length) {
+      GRAZ.news = j.items.map(x => [x.title, x.source, x.link]); GRAZ.topics = j.items.map(x => x.topic); renderGraz();
+    }
+  } catch (e) { /* z. B. beim lokalen Öffnen: Beispiel-News bleiben */ }
+}
+loadWeather(); loadNews(); setInterval(loadWeather, 36e5); setInterval(loadNews, 36e5);
+renderGraz(); setInterval(renderGraz, 60000);
+// Aktualisieren: lädt Wetter und News sofort neu
+$('gzref').onclick = () => {
+  const b = $('gzref'); b.classList.add('spin'); setTimeout(() => b.classList.remove('spin'), 700);
+  loadWeather(); loadNews();
+  const m = $('gzmsg'); m.hidden = false; m.textContent = 'Daten werden neu geladen …'; setTimeout(() => { m.hidden = true; }, 2500);
+};
+
+/* ===== Start ===== */
+renderTasks(); renderBrief(); renderHabits(); renderChart();
+if (!storageOK) $('foot').textContent = 'Hinweis: Speichern im Browser ist hier nicht erlaubt – Daten bleiben nur bis zum Neuladen erhalten.';
+</script>
+</body>
+</html>
